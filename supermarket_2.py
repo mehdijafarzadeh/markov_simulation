@@ -1,92 +1,38 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import pandas as pd
 import numpy as np
 import random
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+import calendar
+import glob
 
+df = pd.DataFrame()
 
-# In[2]:
-
-
-df_monday = pd.read_csv('data/monday.csv', sep=';', index_col=0)
-
-df_tuesday = pd.read_csv('data/tuesday.csv', sep=';', index_col=0)
-
-df_wednesday = pd.read_csv('data/wednesday.csv', sep=';', index_col=0)
-
-df_thursday = pd.read_csv('data/thursday.csv', sep=';', index_col=0)
-
-df_friday = pd.read_csv('data/friday.csv', sep=';', index_col=0)
-
-
-# In[3]:
-
-
-# put together every dataframe for each day into one df
-frames = [df_monday, df_tuesday, df_wednesday, df_thursday, df_friday]
-df = pd.concat(frames)
-df.head()
-
-
-# In[4]:
-
-
-df.index = pd.to_datetime(df.index)
-
-
-# In[5]:
+for file in glob.glob('./data/'+'*.csv'):
+    data = pd.read_csv(file, sep=';', parse_dates=['timestamp'], index_col=['timestamp'])
+    df = df.append(data)
 
 
 # Calculate the total number of customers in each section
 df.groupby('location').count()
 
 
-# In[6]:
-
-
 df.groupby('location').count().plot(kind='bar')
-
-
-# In[7]:
-
 
 df['day'] = df.index.day
 df.head()
-
-
-# In[8]:
-
-
-df.index
-
-
-# In[9]:
-
 
 # Calculate the total number of customers in each section over time (here complete time)
 df.groupby(['location', 'day']).count()
 df.head(6)
 
-
-# In[10]:
-
-
 # Calculate the total number of customers in each section over time (here hourly)
 df.groupby('location').resample('h').count()
 
 
-# In[11]:
-
-
 # Display the number of customers at checkout over time (here one day)
 df[(df.location == 'checkout') & (df.day==2)].count()
-
-
-# In[12]:
 
 
 # Calculate the total number of customers in each section over time (here day)
@@ -94,107 +40,41 @@ df.groupby(['location', 'day']).count()
 df.head(7)
 
 
-# In[13]:
 
 
 df.groupby(['location', 'day']).count().plot(kind='bar')
 
 
-# In[14]:
-
 
 df.reset_index(inplace=True)
 df
 
-
-# In[15]:
-
-
 df[df.location == 'checkout'].groupby(['day', 'timestamp'])[['customer_no']].count()
-
-
-# In[16]:
-
 
 # create new column 'time_spend'
 df['time_spend'] = df.groupby(['day', 'customer_no'])['timestamp'].transform(lambda x : x.max()-x.min())
 
-
-# In[17]:
-
-
 # find customers who were not checked-out
 df[df['time_spend'] == 0]
-
-
-# In[18]:
-
 
 # Calculate the time each customer spent in the market
 df['time_spend']
 
-
-# In[20]:
-
-
 df = df.set_index(['timestamp'])
 df = df.groupby('customer_no').resample('T').ffill()
-
-
-# In[21]:
-
-
-df
-
-
-# In[23]:
-
 
 # create a new column 'next location'
 df.drop(columns='customer_no', inplace=True)
 
 df['next_location'] = df.groupby(['day', 'customer_no'])['location'].shift(-1)
 
-
-# In[24]:
-
-
-df.head(10)
-
-
-# In[25]:
-
-
 df.next_location.fillna('checkout', inplace=True)
-
-
-# In[26]:
-
-
-df.head(10)
-
-
-# In[27]:
-
 
 transition_probes = pd.crosstab(df['location'], df['next_location'], normalize=0)
 
 
-# In[28]:
-
-
-transition_probes
-
-
-# In[29]:
-
-
 # all rows have to sum up to one
 assert all(transition_probes.sum(axis=1) > 0.999)
-
-
-# In[33]:
-
 
 class Customer:
        
@@ -215,7 +95,6 @@ class Customer:
         Propagates the customer to the next state.
         Returns nothing.
         '''
-        
         self.state = random.choices(transition_probes.columns, transition_probes.loc[self.state])[0]
         return self.state
         
@@ -224,9 +103,6 @@ class Customer:
         
         return self.state != 'checkout'
             #return True
-
-
-# In[60]:
 
 
 class Supermarket:
@@ -296,9 +172,6 @@ class Supermarket:
                 
 
 
-# In[63]:
-
-
 lidl = Supermarket(name='LIDL')
 
 while lidl.is_open():
@@ -307,62 +180,14 @@ while lidl.is_open():
 
     # increase the time of the supermarket by one minute
     lidl.add_new_customers()
-    
 
     lidl.next_minute()
     
-
     # remove churned customers from the supermarket
     lidl.print_customers()
     
     lidl.remove_exitsting_customers()
 
-    # generate new customers at their initial location
-    #lidl.add_new_customers()
-    
-
-    # repeat from step 1
-    #lidl.print_customers()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[53]:
-
-
-cust1 = Customer("Jake", "spices", transition_probes, 50)
-cust1.next_state()
-
-
-# In[ ]:
 
 
 
